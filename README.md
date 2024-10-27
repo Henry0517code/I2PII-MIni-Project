@@ -1,12 +1,12 @@
-# CSI2P II Mini Project
+# 1. CSI2P II Mini Project
 
-## Introduction
+## 1.1. Introduction
 
 Let's consider a CPU, which has 32 bits registers `r0`-`r255` and a 256 bytes memory.
 
 In this project, you need to implement a binary expression calculator.
 
-## Input
+## 1.2. Input
 
 The input will contain several binary expressions consisting of integers, operators, parentheses, and three variables `x`, `y`, and `z`.
 
@@ -21,7 +21,7 @@ The following operators will appear in this project:
 At most 15 lines per testcase, 195 characters per line.
 - That is, you don't have to change the value of `MAX_LENGTH` defined in the template.
 
-## Output
+## 1.3. Output
 
 The output is a list of assembly codes. The instruction set architecture are listed in the table below.
 
@@ -31,16 +31,16 @@ The input expression is a subset of C expression, which means you can treat the 
 
 You may refer to [**Sample**](#sample) section to see examples.
 
-## Instruction Set Architecture
+## 1.4. Instruction Set Architecture
 
-### Memory Operation
+### 1.4.1. Memory Operation
 
 | Opcode | Operand1 | Operand2 | Meaning                                                    | Cycles |
 | ------ | -------- | -------- | ---------------------------------------------------------- | ------ |
 | load   | `reg`    | `[Addr]` | Load data in memory `[Addr]` and save into register `reg`. | 200    |
 | store  | `[Addr]` | `reg`    | Store the data of register `reg` into memory `[Addr]`.     | 200    |
 
-### Arithmetic Operation
+### 1.4.2. Arithmetic Operation
 
 | Opcode | Operand1 | Operand2 | Operand3 | Meaning                                          | Cycles |
 | ------ | -------- | -------- | -------- | ------------------------------------------------ | ------ |
@@ -55,12 +55,12 @@ You may refer to [**Sample**](#sample) section to see examples.
 - Using the first 8 registers has no penalty. However, using other registers would double the instruction cycle.
   - For example, `add r0 r1 r7` cost 10 cycles, while `add r8 r0 r23` cost 20 cycles.
 
-## Identifiers
+## 1.5. Identifiers
 
 - The initial value of variables `x`, `y`, and `z` are stored in memory `[0]`, `[4]`, and `[8]` respectively. Before you use them, you have to load them into registers first.
 - After the evaluation of the assembly code, the answer of the variables `x`, `y`, and `z` has to be stored in memory `[0]`, `[4]`, and `[8]` respectively.
 
-## Grammar
+## 1.6. Grammar
 
 Expression grammar for mini project.
 
@@ -129,7 +129,7 @@ PRI_EXPR
     ;
 ```
 
-## Error Handler
+## 1.7. Error Handler
 
 The expression we designed is a subset of C expression statement. That is:
 
@@ -162,17 +162,17 @@ When an error occurs, no matter how much your assembly has outputted, your outpu
 - 2147483647+1 (signed overflow)
 - You may check if an expression is undefined behavior by compiling a C program with `-Wall` flag. If it is, there should be some warnings that shows the word "undefined", or refer to this [site](https://en.cppreference.com/w/cpp/language/ub).
 
-## Assembly Compiler
+## 1.8. Assembly Compiler
 
 ASMC - Assembly Compiler, which recognizes our ISA instructions as input, then parse them and output the value of x, y, z, and total CPU cycle. The input should end with EOF.
 
 Note that ASMC is written in C++.
 
-### Prerequisites
+### 1.8.1. Prerequisites
 
 C++ compiler that supports standard version c++11.
 
-### Compile
+### 1.8.2. Compile
 
 - With command-line
 
@@ -188,7 +188,7 @@ C++ compiler that supports standard version c++11.
 
   1. Compile with codeblocks and execute.
 
-### Instruction
+### 1.8.3. Instruction
 
 The initial value of (x, y, z) is (2, 3, 5). The final result of (x, y, z) will show up only when errors or EOF occur.
 
@@ -202,15 +202,15 @@ With command-line, you can set the value of x, y, and z with given values by the
 
 Replace `<x>`, `<y>`, and `<z>` with their initial values.
 
-## Sample
+## 1.9. Sample
 
-### Sample Input 1
+### 1.9.1. Sample Input 1
 
 ```c
 x = z + 5;
 ```
 
-### Sample Output 1
+### 1.9.2. Sample Output 1
 
 ```
 load r0 [8]
@@ -225,14 +225,14 @@ Feed the output into ASMC, you'll get the result of `(x,y,z)=(10,3,5)`, which is
 
 - Total cycle cost: 200(load) + 2*10(add) + 200(store) = 420 cycles.
 
-### Sample Input 2
+### 1.9.3. Sample Input 2
 
 ```c
 x = (y++) + (++z);
 z = ++(y++);
 ```
 
-### Sample Output 2
+### 1.9.4. Sample Output 2
 
 ```
 load r255 [128]
@@ -242,7 +242,7 @@ Compile Error!
 - Note that in sample 2, the first expression is correct, while the second one causes compile error (semantic error).
 - The total cycle of compile error testcases will be recognized as 0.
 
-### Sample Input 3
+### 1.9.5. Sample Input 3
 
 ```c
 7 + (x = (y = 3 * 5) % 9);
@@ -250,7 +250,7 @@ z = x * y;
 z = 3;
 ```
 
-### Sample Output 3
+### 1.9.6. Sample Output 3
 
 ```
 add r0 0 6
@@ -264,13 +264,13 @@ store [8] r0
 - You don't actually need to keep the value of `x`, `y`, and `z` (i.e. `[0]`, `[4]`, and `[8]` in memory) correct after each expression, as long as the final result of `x`, `y`, and `z` is correct.
 - The instruction can be optimized, which means you can reduce the number of instructions while keeping the correctness of your answer as you wish.
 
-## Restrictions
+## 1.10. Restrictions
 
 Function `itoa` is not allowed. Please use `sprintf` instead.
 
 - Our judge system is linux-based system. `itoa` is not included in standard library. You'll receive compile error if you call `itoa` function.
 
-## Score
+## 1.11. Score
 
 The project includes 2 parts:
 

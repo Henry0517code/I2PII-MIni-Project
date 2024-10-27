@@ -38,7 +38,7 @@ typedef struct ASTUnit {
 	exit(0);\
 }
 // You may set DEBUG=1 to debug. Remember setting back to 0 before submit.
-#define DEBUG 0
+#define DEBUG 1
 // Split the input char array into token linked list.
 Token *lexer(const char *in);
 // Create a new token.
@@ -87,6 +87,8 @@ int main() {
 		codegen(ast_root);
 		free(content);
 		freeAST(ast_root);
+		// AST_print(ast_root);
+		// freeAST(ast_root);
 	}
 	return 0;
 }
@@ -209,6 +211,7 @@ AST *parse(Token *arr, int l, int r, GrammarState S) {
 		case ASSIGN_EXPR:
 			if ((nxt = findNextSection(arr, l, r, condASSIGN)) != -1) {
 				now = new_AST(arr[nxt].kind, 0);
+				// WHY IS LFS A UNARY_EXPR?
 				now->lhs = parse(arr, l, nxt - 1, UNARY_EXPR);
 				now->rhs = parse(arr, nxt + 1, r, ASSIGN_EXPR);
 				return now;
@@ -225,9 +228,27 @@ AST *parse(Token *arr, int l, int r, GrammarState S) {
 		case MUL_EXPR:
 			// TODO: Implement MUL_EXPR.
 			// hint: Take ADD_EXPR as reference.
+			if ((nxt = findNextSection(arr, r, l, condMUL)) != -1) {
+				now = new_AST(arr[nxt].kind, 0);
+				now->lhs = parse(arr, l, nxt - 1, MUL_EXPR);
+				now->rhs = parse(arr, nxt + 1, r, UNARY_EXPR);
+				return now;
+			}
+			return parse(arr, l, r, UNARY_EXPR);
 		case UNARY_EXPR:
 			// TODO: Implement UNARY_EXPR.
 			// hint: Take POSTFIX_EXPR as reference.
+			if (arr[l].kind == PREINC || arr[l].kind == PREDEC) {
+				now = new_AST(arr[l].kind, 0);
+				now->mid = parse(arr, l + 1, r, UNARY_EXPR);
+				return now;
+			}
+			if (arr[l].kind == PLUS || arr[l].kind == MINUS) {
+				now = new_AST(arr[l].kind, 0);
+				now->mid = parse(arr, l + 1, r, UNARY_EXPR);
+				return now;
+			}
+			return parse(arr, l, r, POSTFIX_EXPR);
 		case POSTFIX_EXPR:
 			if (arr[r].kind == PREINC || arr[r].kind == PREDEC) {
 				// translate "PREINC", "PREDEC" into "POSTINC", "POSTDEC"
