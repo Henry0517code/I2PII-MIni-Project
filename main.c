@@ -83,12 +83,15 @@ int main() {
 		size_t len = token_list_to_arr(&content);
 		if (len == 0) continue;
 		AST *ast_root = parser(content, len);
+		// semantic_check(ast_root);
+		// codegen(ast_root);
+		// free(content);
+		// freeAST(ast_root);
+		token_print(content, len);
+		AST_print(ast_root);
 		semantic_check(ast_root);
-		codegen(ast_root);
 		free(content);
 		freeAST(ast_root);
-		// AST_print(ast_root);
-		// freeAST(ast_root);
 	}
 	return 0;
 }
@@ -322,6 +325,15 @@ void semantic_check(AST *now) {
 	// TODO: Implement the remaining semantic_check code.
 	// hint: Follow the instruction above and ASSIGN-part code to implement.
 	// hint: Semantic of each node needs to be checked recursively (from the current node to lhs/mid/rhs node).
+	if (now->kind == PREINC || now->kind == PREDEC || now->kind == POSTINC || now->kind == POSTDEC) {
+		AST *tmp = now->mid;
+		while (tmp->kind == LPAR) tmp = tmp->mid;
+		if (tmp->kind != IDENTIFIER)
+			err("Lvalue is required as operand of INC/DEC.");
+	}
+	semantic_check(now->lhs);
+	semantic_check(now->mid);
+	semantic_check(now->rhs);
 }
 
 void codegen(AST *root) {
