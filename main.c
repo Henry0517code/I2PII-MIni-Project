@@ -244,12 +244,7 @@ AST *parse(Token *arr, int l, int r, GrammarState S) {
 		case UNARY_EXPR:
 			// TODO: Implement UNARY_EXPR.
 			// hint: Take POSTFIX_EXPR as reference.
-			if (arr[l].kind == PREINC || arr[l].kind == PREDEC) {
-				now = new_AST(arr[l].kind, 0);
-				now->mid = parse(arr, l + 1, r, UNARY_EXPR);
-				return now;
-			}
-			if (arr[l].kind == PLUS || arr[l].kind == MINUS) {
+			if (arr[l].kind == PREINC || arr[l].kind == PREDEC || arr[l].kind == POSTINC || arr[l].kind == POSTDEC) {
 				now = new_AST(arr[l].kind, 0);
 				now->mid = parse(arr, l + 1, r, UNARY_EXPR);
 				return now;
@@ -403,6 +398,23 @@ Operand *codegen(AST *root, AST *parent) {
 			freeOperand(op2);
 			freeOperand(op3);
             return op1;
+		case PREINC:
+		case PREDEC:
+			op2 = codegen(root->mid, root); // addr
+			op1 = new_operand(REG, findReg()); // reg
+            printf("load %s %s\n", op1->str, op2->str);
+			printf("%s %s %s 1\n", root->kind == PREINC ? "add" : "sub", op1->str, op1->str);
+			printf("store %s %s\n", op2->str, op1->str);
+			return op1;
+		case POSTINC:
+		case POSTDEC:
+			op2 = codegen(root->mid, root); // addr
+			op1 = new_operand(REG, findReg()); // reg
+            printf("load %s %s\n", op1->str, op2->str);
+			printf("%s %s %s 1\n", root->kind == POSTINC ? "add" : "sub", op1->str, op1->str);
+			printf("store %s %s\n", op2->str, op1->str);
+			printf("%s %s %s 1\n", root->kind == POSTINC ? "sub" : "add", op1->str, op1->str);
+			return op1;
         case MINUS:
             op3 = codegen(root->mid, root);
 			if (op3->type == REG) {
@@ -416,6 +428,11 @@ Operand *codegen(AST *root, AST *parent) {
         case IDENTIFIER:
 			// TODO: Prevent repeaed loading of the same variable.
             op2 = new_operand(ADDR, (root->val - 'x') * 4);
+			if(parent != NULL && 
+				(parent->kind == PREINC || parent->kind == PREDEC || 
+				parent->kind == POSTINC || parent->kind == POSTDEC) && 
+				parent->mid == root)
+				return op2;
             if (parent != NULL && parent->kind == ASSIGN && parent->lhs == root)
                 return op2;
             op1 = new_operand(REG, findReg());
