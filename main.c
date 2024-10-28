@@ -44,7 +44,7 @@ typedef struct OperandUnit {
 	exit(0);\
 }
 // You may set DEBUG=1 to debug. Remember setting back to 0 before submit.
-#define DEBUG 0
+#define DEBUG 1
 // Split the input char array into token linked list.
 Token *lexer(const char *in);
 // Create a new token.
@@ -410,6 +410,7 @@ Operand *codegen(AST *root, AST *parent) {
             printf("load %s %s\n", op1->str, op2->str);
 			printf("%s %s %s 1\n", root->kind == PREINC ? "add" : "sub", op1->str, op1->str);
 			printf("store %s %s\n", op2->str, op1->str);
+			freeOperand(op2);
 			return op1;
 		case POSTINC:
 		case POSTDEC:
@@ -419,6 +420,7 @@ Operand *codegen(AST *root, AST *parent) {
 			printf("%s %s %s 1\n", root->kind == POSTINC ? "add" : "sub", op1->str, op1->str);
 			printf("store %s %s\n", op2->str, op1->str);
 			printf("%s %s %s 1\n", root->kind == POSTINC ? "sub" : "add", op1->str, op1->str);
+			freeOperand(op2);
 			return op1;
         case MINUS:
             op3 = codegen(root->mid, root);
@@ -435,17 +437,16 @@ Operand *codegen(AST *root, AST *parent) {
             op2 = new_operand(ADDR, (root->val - 'x') * 4);
 			if(parent != NULL && 
 				(parent->kind == PREINC || parent->kind == PREDEC || 
-				parent->kind == POSTINC || parent->kind == POSTDEC) && 
-				parent->mid == root)
+				parent->kind == POSTINC || parent->kind == POSTDEC))
 				return op2;
-            if (parent != NULL && parent->kind == ASSIGN && parent->lhs == root)
+            if (parent != NULL && parent->kind == ASSIGN)
                 return op2;
             op1 = new_operand(REG, findReg());
             printf("load %s %s\n", op1->str, op2->str);
 			freeOperand(op2);
             return op1;
         case CONSTANT:
-			if (parent != NULL && parent->kind == ASSIGN && parent->rhs == root) {
+			if (parent != NULL && parent->kind == ASSIGN) {
 				op1 = new_operand(REG, findReg());
 				printf("add %s 0 %d\n", op1->str, root->val);
 				return op1;
@@ -453,7 +454,7 @@ Operand *codegen(AST *root, AST *parent) {
 			return new_operand(CONST, root->val);
 		case PLUS:
 		case LPAR:
-            return codegen(root->mid, root);
+            return codegen(root->mid, parent);
         case RPAR:
             return NULL;
         default:
