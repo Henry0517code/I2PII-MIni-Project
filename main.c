@@ -25,6 +25,12 @@ typedef struct ASTUnit {
 	int val; // record the integer value or variable name
 	struct ASTUnit *lhs, *mid, *rhs;
 } AST;
+typedef enum {REG, ADDR, CONST}	OperandType;
+typedef struct OperandUnit {
+	OperandType type;
+	int val;
+	char str[10]; // output string for ASM code
+} Operand;
 
 /// utility interfaces
 
@@ -64,7 +70,7 @@ int condRPAR(Kind kind);
 // Check if the AST is semantically right. This function will call err() automatically if check failed.
 void semantic_check(AST *now);
 // Generate ASM code.
-void codegen(AST *root);
+Operand *codegen(AST *root, AST *parent);
 // Free the whole AST.
 void freeAST(AST *now);
 
@@ -83,13 +89,10 @@ int main() {
 		size_t len = token_list_to_arr(&content);
 		if (len == 0) continue;
 		AST *ast_root = parser(content, len);
-		// semantic_check(ast_root);
-		// codegen(ast_root);
-		// free(content);
-		// freeAST(ast_root);
+		semantic_check(ast_root);
 		token_print(content, len);
 		AST_print(ast_root);
-		semantic_check(ast_root);
+		codegen(ast_root, NULL);
 		free(content);
 		freeAST(ast_root);
 	}
@@ -336,9 +339,107 @@ void semantic_check(AST *now) {
 	semantic_check(now->rhs);
 }
 
-void codegen(AST *root) {
-	// TODO: Implement your codegen in your own way.
-	// You may modify the function parameter or the return type, even the whole structure as you wish.
+typedef enum {FREE, INUSE} RegStatus;
+RegStatus reg_status[256] = {FREE};
+
+int findReg(void) {
+	for (int i = 0; i < 256; i++) {
+		if (reg_status[i] == FREE) {
+			reg_status[i] = INUSE;
+			return i;
+		}
+	}
+	return -1;
+}
+
+Operand *new_operand(OperandType type, int val) {
+	Operand *res = (Operand*)malloc(sizeof(Operand));
+	res->type = type;
+	res->val = val;
+	switch (res->type)
+	{
+	case REG:
+		sprintf(res->str, "r%d", res->val);
+		break;
+	case ADDR:
+		sprintf(res->str, "[%d]", res->val);
+		break;
+	case CONST:
+		sprintf(res->str, "%d", res->val);
+		break;
+	default:
+		break;
+	}
+	return res;
+}
+
+void freeOperand(Operand *op) {
+	if (op == NULL) return;
+	if (op->type == REG) reg_status[op->val] = FREE;
+	free(op);
+}
+
+Operand *codegen(AST *root, AST *parent) {
+    if (root == NULL) return NULL;
+    Operand *op1 = NULL, *op2 = NULL, *op3 = NULL;
+	char ari_opcs[][10] = {"add", "sub", "mul", "div", "rem"};
+
+    switch (root->kind) {
+        case ASSIGN:
+            op1 = codegen(root->lhs, root);
+            op2 = codegen(root->rhs, root);
+            printf("store %s %s\n", op1->str, op2->str);
+			freeOperand(op1);
+			freeOperand(op2);
+            return NULL;
+        case ADD:
+		case SUB:
+		case MUL:
+		case DIV:
+		case REM:
+            op2 = codegen(root->lhs, root);
+            op3 = codegen(root->rhs, root);
+			op1 = new_operand(REG, findReg());
+			printf("%s %s %s %s\n", ari_opcs[root->kind - ADD], op1->str, op2->str, op3->str);
+			freeOperand(op2);
+			freeOperand(op3);
+            return op1;
+        case MINUS:
+            op3 = codegen(root->mid, root);
+			if (op3->type == REG) {
+            	printf("sub %s 0 %s\n", op3->str, op3->str);
+				return op3;
+			}
+			op1 = new_operand(REG, findReg());
+			printf("sub %s 0 %s\n", op1->str, op3->str);
+			freeOperand(op3);
+			return op1;
+        case IDENTIFIER:
+			// TODO: Prevent repeaed loading of the same variable.
+            op2 = new_operand(ADDR, (root->val - 'x') * 4);
+            if (parent != NULL && parent->kind == ASSIGN && parent->lhs == root)
+                return op2;
+            op1 = new_operand(REG, findReg());
+            printf("load %s %s\n", op1->str, op2->str);
+			freeOperand(op2);
+            return op1;
+        case CONSTANT:
+			if (parent != NULL && parent->kind == ASSIGN && parent->rhs == root) {
+				op1 = new_operand(REG, findReg());
+				printf("add %s 0 %d\n", op1->str, root->val);
+				return op1;
+			}
+			return new_operand(CONST, root->val);
+		case PLUS:
+		case LPAR:
+            return codegen(root->mid, root);
+        case RPAR:
+            return NULL;
+        default:
+            err("Unsupported operation in codegen!");
+            break;
+    }
+    return NULL;
 }
 
 void freeAST(AST *now) {
@@ -395,7 +496,7 @@ void AST_print(AST *head) {
 	const static char KindName[][20] = {
 		"Assign", "Add", "Sub", "Mul", "Div", "Rem", "PreInc", "PreDec", "PostInc", "PostDec", "Identifier", "Constant", "Parentheses", "Parentheses", "Plus", "Minus"
 	};
-	const static char format[] = "%s\n";
+	const static char str[] = "%s\n";
 	const static char format_str[] = "%s, <%s = %s>\n";
 	const static char format_val[] = "%s, <%s = %d>\n";
 	if (head == NULL) return;
@@ -420,7 +521,7 @@ void AST_print(AST *head) {
 		case RPAR:
 		case PLUS:
 		case MINUS:
-			fprintf(stderr, format, KindName[head->kind]);
+			fprintf(stderr, str, KindName[head->kind]);
 			break;
 		case IDENTIFIER:
 			fprintf(stderr, format_str, KindName[head->kind], "name", (char*)&(head->val));
