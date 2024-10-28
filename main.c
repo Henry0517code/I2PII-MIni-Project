@@ -44,7 +44,7 @@ typedef struct OperandUnit {
 	exit(0);\
 }
 // You may set DEBUG=1 to debug. Remember setting back to 0 before submit.
-#define DEBUG 1
+#define DEBUG 0
 // Split the input char array into token linked list.
 Token *lexer(const char *in);
 // Create a new token.
@@ -339,11 +339,11 @@ void semantic_check(AST *now) {
 	semantic_check(now->rhs);
 }
 
-typedef enum {FREE, INUSE} RegStatus;
+typedef enum {FREE, INUSE, IDEN} RegStatus;
 RegStatus reg_status[256] = {FREE};
 
 int findReg(void) {
-	for (int i = 0; i < 256; i++) {
+	for (int i = 3; i < 256; i++) {
 		if (reg_status[i] == FREE) {
 			reg_status[i] = INUSE;
 			return i;
@@ -390,6 +390,10 @@ Operand *codegen(AST *root, AST *parent) {
             op2 = codegen(root->rhs, root);
             printf("store %s %s\n", op1->str, op2->str);
 			freeOperand(op1);
+            if (parent == NULL) {
+                freeOperand(op2);
+                return NULL;
+            }
             return op2;
         case ADD:
 		case SUB:
@@ -406,8 +410,7 @@ Operand *codegen(AST *root, AST *parent) {
 		case PREINC:
 		case PREDEC:
 			op2 = codegen(root->mid, root); // addr
-			op1 = new_operand(REG, findReg()); // reg
-            printf("load %s %s\n", op1->str, op2->str);
+			op1 = codegen(root->mid, NULL); // reg
 			printf("%s %s %s 1\n", root->kind == PREINC ? "add" : "sub", op1->str, op1->str);
 			printf("store %s %s\n", op2->str, op1->str);
 			freeOperand(op2);
@@ -415,8 +418,7 @@ Operand *codegen(AST *root, AST *parent) {
 		case POSTINC:
 		case POSTDEC:
 			op2 = codegen(root->mid, root); // addr
-			op1 = new_operand(REG, findReg()); // reg
-            printf("load %s %s\n", op1->str, op2->str);
+			op1 = codegen(root->mid, NULL); // reg
 			printf("%s %s %s 1\n", root->kind == POSTINC ? "add" : "sub", op1->str, op1->str);
 			printf("store %s %s\n", op2->str, op1->str);
 			printf("%s %s %s 1\n", root->kind == POSTINC ? "sub" : "add", op1->str, op1->str);
@@ -441,8 +443,12 @@ Operand *codegen(AST *root, AST *parent) {
 				return op2;
             if (parent != NULL && parent->kind == ASSIGN)
                 return op2;
-            op1 = new_operand(REG, findReg());
+            int reg_num = root->val - 'x';
+            if (reg_status[reg_num] == IDEN)
+                return new_operand(REG, reg_num);
+            op1 = new_operand(REG, reg_num);
             printf("load %s %s\n", op1->str, op2->str);
+            reg_status[reg_num] = IDEN;
 			freeOperand(op2);
             return op1;
         case CONSTANT:
