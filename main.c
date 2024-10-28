@@ -90,8 +90,8 @@ int main() {
 		if (len == 0) continue;
 		AST *ast_root = parser(content, len);
 		semantic_check(ast_root);
-		token_print(content, len);
-		AST_print(ast_root);
+		// token_print(content, len);
+		// AST_print(ast_root);
 		codegen(ast_root, NULL);
 		free(content);
 		freeAST(ast_root);
@@ -390,8 +390,7 @@ Operand *codegen(AST *root, AST *parent) {
             op2 = codegen(root->rhs, root);
             printf("store %s %s\n", op1->str, op2->str);
 			freeOperand(op1);
-			freeOperand(op2);
-            return NULL;
+            return op2;
         case ADD:
 		case SUB:
 		case MUL:
